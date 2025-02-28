@@ -1,0 +1,18 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+ENV/
+.DS_Store
+
+# ONNX Runtime files
+static/ort-*.wasm
+static/ort.min.js
+
+# Large model files
+static/models/deepseek-r1/
+transformers.js-examples/
+oldversion/
