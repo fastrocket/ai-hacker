@@ -359,14 +359,11 @@ if __name__ == "__main__":
     for route in app.routes:
         print(f"Route: {route.path}, methods: {getattr(route, 'methods', None)}")
     
-    # Create a config object for uvicorn
-    config = uvicorn.Config("main:app", host="0.0.0.0", port=8000, reload=False)
-    server = uvicorn.Server(config)
+    # Get port from environment variable with fallback to 8000
+    port = int(os.environ.get("PORT", 8000))
     
-    # Start the server in a separate thread
-    server_thread = threading.Thread(target=server.run)
-    server_thread.daemon = True  # Set as daemon so it exits when main thread exits
-    server_thread.start()
+    # Run directly with uvicorn, binding to 0.0.0.0 to make it accessible
+    uvicorn.run(app, host="0.0.0.0", port=port)
     
     logger.info("Server started. Press Ctrl+C to stop.")
     
