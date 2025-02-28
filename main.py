@@ -13,10 +13,24 @@ from typing import List, Dict, Any, Optional
 from collections import defaultdict
 import logging
 import requests
+import signal
+import threading
+import time
+import sys
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Create an event to signal when the server should stop
+stop_event = threading.Event()
+
+def signal_handler(sig, frame):
+    logger.info("Ctrl+C pressed. Shutting down server...")
+    stop_event.set()
+
+# Register the signal handler
+signal.signal(signal.SIGINT, signal_handler)
 
 app = FastAPI()
 
@@ -345,4 +359,31 @@ if __name__ == "__main__":
     for route in app.routes:
         print(f"Route: {route.path}, methods: {getattr(route, 'methods', None)}")
     
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    # Create a config object for uvicorn
+    config = uvicorn.Config("main:app", host="0.0.0.0", port=8000, reload=False)
+    server = uvicorn.Server(config)
+    
+    # Start the server in a separate thread
+    server_thread = threading.Thread(target=server.run)
+    server_thread.daemon = True  # Set as daemon so it exits when main thread exits
+    server_thread.start()
+    
+    logger.info("Server started. Press Ctrl+C to stop.")
+    
+    try:
+        # Wait for the stop event or for the server thread to finish
+        while not stop_event.is_set() and server_thread.is_alive():
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        # This is a fallback in case the signal handler doesn't catch it
+        logger.info("KeyboardInterrupt detected. Shutting down...")
+        stop_event.set()
+    
+    # If we get here because of Ctrl+C, the signal handler has already set the stop_event
+    if stop_event.is_set():
+        logger.info("Shutting down server...")
+        # Give the server a moment to process any pending requests
+        time.sleep(1)
+        # Force exit as uvicorn doesn't always exit cleanly
+        logger.info("Server shutdown complete.")
+        sys.exit(0)
